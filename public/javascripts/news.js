@@ -201,7 +201,10 @@ app.controller('news_Ctrl', function ($scope, $http, $timeout) {
                     var pattern = /责任编辑：(.+)/;//匹配名字
                     res.data.result.forEach(function (element) {
                         // "x":  责任编辑：李夏君 ,对x进行处理,只取 名字
-                        newdata.push({name: pattern.exec(element["x"])[1], value: element["y"]});
+                        var thename = pattern.exec(element["x"]);
+                        if(thename != null)
+                            thename = thename[1];
+                        newdata.push({name: thename, value: element["y"]});
 
                     });
 

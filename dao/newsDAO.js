@@ -5,16 +5,19 @@
 var mongo = require("./mongodb.js")
 
 module.exports = {
-    query_noparam :function(sql, callback) {
-        pool.getConnection(function(err, conn) {
-            if (err) {
-                callback(err, null, null);
-            } else {
-                conn.query(sql, function(qerr, vals, fields) {
-                    conn.release(); //释放连接
-                    callback(qerr, vals, fields); //事件驱动回调
-                });
-            }
+    query_noparam :function(que, col, seq, callback) {
+        // pool.getConnection(function(err, conn) {
+        //     if (err) {
+        //         callback(err, null, null);
+        //     } else {
+        //         conn.query(sql, function(qerr, vals, fields) {
+        //             conn.release(); //释放连接
+        //             callback(qerr, vals, fields); //事件驱动回调
+        //         });
+        //     }
+        // });
+        mongo.search_web(que, col, seq, function(result){
+            callback(null, result, null); //事件驱动回调
         });
     },
     search :function(searchparam, callback) {
