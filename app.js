@@ -11,6 +11,7 @@ var logDAO = require('./dao/logDAO.js');
 // var indexRouter = require('./routes/users');
 var usersRouter = require('./routes/users');
 var newsRouter = require('./routes/news');
+var manageRouter = require('./routes/manage');
 
 
 var app = express();
@@ -74,6 +75,7 @@ app.use('/angular', express.static(path.join(__dirname , '/node_modules/angular'
 // app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/news', newsRouter);
+app.use('/manage', manageRouter);
 
 
 //  检测是否登录

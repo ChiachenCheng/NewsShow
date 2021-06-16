@@ -32,6 +32,25 @@ app.controller('news_Ctrl', function ($scope, $http, $timeout) {
 
     };
 
+    $scope.manage = function () {
+
+        // $http.get().then();
+
+        $http.get("/users/manage").then(
+            function (res) {
+                if(res.data.msg != undefined){
+                    alert(res.data.msg);
+                }
+                else{
+                    window.location.href=res.data.result;
+                }
+            },function (err) {
+                $scope.msg = err.data;
+            }
+        );
+
+    };
+
     // 查询数据
     $scope.search = function () {
         var title = $scope.title;

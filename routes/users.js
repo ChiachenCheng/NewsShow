@@ -61,4 +61,21 @@ router.get('/logout', function(req, res, next){
   });
 });
 
+router.get("/manage", function(req, res, next){
+  var usr = req.session["username"];
+  if (usr===undefined) {
+    // response.redirect('/index.html')
+    response.json({message:'url',result:'/index.html'});
+  } else {
+    userDAO.getByUsername(usr, function (user) {
+      if(user.length != 0 && user["manage"] == 1){
+        res.json({result:'/manage.html'});
+      } else {
+        res.json({result:'/index.html',msg:'您没有管理员权限！'});
+        return;
+      }
+    });
+  }
+});
+
 module.exports = router;
