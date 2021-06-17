@@ -13,10 +13,14 @@ router.post('/login', function(req, res) {
       res.json({msg:'用户不存在！请检查后输入'});
     }else {
       if(password===user["passwd"]){
-        req.session['username'] = username;
-        res.cookie('username', username);
-        res.json({msg: 'ok'});
-        // res.json({msg:'ok'});
+        if(user["available"]===1){
+          req.session['username'] = username;
+          res.cookie('username', username);
+          res.json({msg: 'ok'});
+          // res.json({msg:'ok'});
+        } else {
+          res.json({msg:'您的账号被禁用，请联系管理员！'});
+        }
       }else{
         res.json({msg:'用户名或密码错误！请检查后输入'});
       }

@@ -10,11 +10,17 @@ router.get('/search', function(request, response) {
         // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     } else {
-        var param = request.query;
-        console.log(param);
-        logDAO.search(param, function (err, result, fields) {
-            response.json({message:'data',result:result});
-        })
+        userDAO.getByUsername(request.session['username'], function (user) {
+            if(user["manage"] === 1){
+                var param = request.query;
+                console.log(param);
+                logDAO.search(param, function (err, result, fields) {
+                    response.json({message:'data',result:result});
+                });
+            } else {
+                response.json({message:'url',result:'/index.html'});
+            }
+        });
     }
 });
 
@@ -25,9 +31,15 @@ router.get('/forbid', function(request, response){
         // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     } else {
-        var usr = request.query.username;
-        userDAO.forbid(usr, function(result){
-            response.json({message:'data',result:result})
+        userDAO.getByUsername(request.session['username'], function (user) {
+            if(user["manage"] === 1){
+                var usr = request.query.username;
+                userDAO.forbid(usr, function(result){
+                    response.json({message:'data',result:result})
+                });
+            } else {
+                response.json({message:'url',result:'/index.html'});
+            }
         });
     }
 });
