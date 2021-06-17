@@ -15,6 +15,7 @@ app.controller('manage_Ctrl', function ($scope, $http, $timeout) {
         // $scope.content2=undefined;
         // $scope.selectContent='AND';
         $scope.sorttime=undefined;
+        // $scope.forbiduser=undefined;
     };
 
     $scope.logout = function () {
@@ -34,6 +35,17 @@ app.controller('manage_Ctrl', function ($scope, $http, $timeout) {
 
     $scope.backToNews = function () {
         window.location.href="/news.html";
+    };
+
+    $scope.stopit = function () {
+        var fuser = $scope.forbiduser;
+        var myurl = `/manage/forbid?username=${fuser}`;
+
+        $http.get(myurl).then(
+            function (res){
+                alert(res.data.result);
+            }
+        );
     };
 
     // 查询数据

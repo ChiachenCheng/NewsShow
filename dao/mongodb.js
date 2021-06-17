@@ -54,6 +54,20 @@ var search_user = function(webjson, coljson, seqjson, callback) {
     });
 };
 
+var update_user = function(wherejson, updatejson, callback) {
+    MongoClient.connect(url, function(err, db) {
+        if (err) console.log('查询/登陆出错：' + err);
+        var dbo = db.db("crawler");
+        dbo.collection("users").updateOne(wherejson, updatejson, function(err, result) { // 返回集合中所有数据
+            if (err) throw err;
+            console.log("文档更新成功")
+            console.log(result)
+            db.close();
+            callback(result);
+        });
+    });
+};
+
 var insert_logs = function(webjson) {
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
@@ -84,5 +98,6 @@ exports.insert_web = insert_web;
 exports.search_web = search_web;
 exports.insert_user = insert_user;
 exports.search_user = search_user;
+exports.update_user = update_user;
 exports.insert_logs = insert_logs;
 exports.search_logs = search_logs;
