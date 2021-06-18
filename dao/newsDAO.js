@@ -3,6 +3,7 @@
 // var pool = mysql.createPool(mysqlConf.mysql);
 // 使用了连接池，重复使用数据库连接，而不必每执行一次CRUD操作就获取、释放一次数据库连接，从而提高了对数据库操作的性能。
 var mongo = require("./mongodb.js")
+var nodejieba = require('nodejieba');
 
 module.exports = {
     query_noparam :function(que, col, seq, callback) {
@@ -72,8 +73,21 @@ module.exports = {
             or_array.push({"title":{"$regex":searchparam["t"]}})
         if(keyword!="undefined")
             or_array.push({"keywords":{"$regex":keyword}})
-        if(content!="undefined")
-            or_array.push({"content":{"$regex":content}})
+        if(content!="undefined"){
+            console.log("11111111");
+            var words = nodejieba.extract(content, 20);
+            console.log(words);
+            var words_array = []
+            console.log(words.length);
+            for (var i=0; i<words.length; i++){
+                wd = words[i];
+                console.log(wd);
+                words_array.push({"content":{"$regex":wd["word"]}})
+            }
+            console.log(words_array);
+            // or_array.push({"content":{"$regex":content}})
+            or_array.push({"$or":words_array})
+        }
         if(allword!="undefined")
             or_array=[{"title":{"$regex":allword}}, {"keywords":{"$regex":allword}}, 
                     {"content":{"$regex":allword}}, {"desc":{"$regex":allword}}, 
@@ -96,6 +110,12 @@ module.exports = {
             // });
             // response.write(JSON.stringify(result));
             // response.end();
+            // if(searchparam['stime']!="undefined"){
+
+            //     result.array.forEach(element => {
+                    
+            //     });
+            // }
             callback(null, result, null); //事件驱动回调
         });
 

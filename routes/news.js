@@ -16,7 +16,7 @@ router.get('/search', function(request, response) {
         var param = request.query;
         console.log(param);
         newsDAO.search(param, function (err, result, fields) {
-            console.log(result);
+            // console.log(result);
             response.json({message:'data',result:result});
         })
     }
