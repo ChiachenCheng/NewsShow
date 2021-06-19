@@ -1,10 +1,11 @@
 var express = require('express');
 var router = express.Router();
 var userDAO = require('../dao/userDAO');
+var md5 =require("md5");
 
 router.post('/login', function(req, res) {
   var username = req.body.username;
-  var password = req.body.password;
+  var password = md5("1999" + req.body.password + "1205");
   // var sess = req.session;
 
   userDAO.getByUsername(username, function (user) {
@@ -32,6 +33,7 @@ router.post('/login', function(req, res) {
 /* add users */
 router.post('/register', function (req, res) {
   var add_user = req.body;
+  add_user.password = md5("1999" + add_user.password + "1205");
   // 先检查用户是否存在
   userDAO.getByUsername(add_user.username, function (user) {
     if (user.length != 0) {
