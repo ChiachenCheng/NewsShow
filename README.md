@@ -229,11 +229,182 @@ router.get('/search', function(request, response) {
 
 ### 记录日志
 
+要完成记录日志的功能，有很多种放法可以做到，这取决于记录日志的粒度。如果需要每次访问就数据库都记录日志，或修改数据库时材记录日志，则可以在每次访问数据库的时候记录下对数据库的访问内容。如果对于用户每一次访问路径都需要记录日志，可以在用户每次访问相应路径时将用户的访问存储至数据库。这里选择的是后者，即在用户每次访问网站中的相应链接之时，将用户的访问信息用于生成session和日志，并且将日志存储至logs文档集中。
 
+```javascript
+let method = '';
+app.use(logger(function (tokens, req, res) {
+  console.log('打印的日志信息：');
+  var request_time = new Date();
+  var request_method = tokens.method(req, res);
+  var request_url = tokens.url(req, res);
+  var status = tokens.status(req, res);
+  var remote_addr = tokens['remote-addr'](req, res);
+  if(req.session){
+    var username = req.session['username']||'notlogin';
+  }else {
+    var username = 'notlogin';
+  }
+
+  // 直接将用户操作记入mysql中
+  if(username!='notlogin'){
+    logDAO.userlog([username,request_time,request_method,request_url,status,remote_addr], function (success) {
+      console.log('成功保存！');
+    })
+  }
+```
+
+向logs文档集中存储日志信息的代码如下。这样就完成了一次日志的插入，可以在数据库中看到日志的具体格式。
+
+```javascript
+userlog :function (useraction, callback) {
+        var ins = {"username":useraction[0],"request_time":useraction[1],"request_method":useraction[2],"request_url":useraction[3],"status":useraction[4],"remote_addr":useraction[5]};
+        mongo.insert_logs(ins);
+        callback(true);
+    },
+
+var insert_logs = function(webjson) {
+    MongoClient.connect(url, function(err, db) {
+        if (err) throw err;
+        var dbo = db.db("crawler");
+        try{
+            dbo.collection("logs").insertOne(webjson, function(err, res) {
+                if (err) console.log('插入日志时出错：' + err);
+                console.log("日志插入成功");
+                db.close();
+            });
+        } catch (e) { console.log('日志插入时出错：' + e) };
+    });
+};
+```
 
 ### 分页和排序
 
+分页和排序的功能实现也有很多种方法，一种方法是将分页和排序放在访问数据库时。对于SQL数据库来说，在查询时使用limit和offset关键字取出特定的几条数据。对于我使用的MongoDB文档行数据库来说，也可以使用limit和skip关键字取出相应页码的记录。但这样的话，对于每一次翻页的行为，都需要访问一次数据库。这里的代码采用将分页和排序功能使用前端功能渲染做出。
+
+在上一次的实验报告中已经展示过搜索功能的实现，这里不再重复进行展示。分页功能的实现主要在前端。在接收到后端返回的数据之后，前端会调用分页的函数用于进行分页。分页的具体原理就是在确定了总的页码数之后调用slice函数进行分页。
+
+```javascript
+// 查询数据
+$scope.search = function () {
+    var title = $scope.title;
+    var keywords = $scope.keyword;
+    var content = $scope.content;
+    var allwords = $scope.allwords;
+    var sorttime = $scope.sorttime;
+
+    var myurl = `/news/search?t=${title}&k=${keywords}&c=${content}&a=${allwords}&stime=${sorttime}`;
+
+    $http.get(myurl).then(
+        function (res) {
+            if(res.data.message=='data'){
+                $scope.isisshowresult = true; //显示表格查询结果
+                $scope.initPageSort(res.data.result)
+            }else {
+                window.location.href=res.data.result;
+            }
+        },function (err) {
+            $scope.msg = err.data;
+        });
+};
+
+// 分页
+$scope.initPageSort=function(item){
+    $scope.pageSize=5;　　//每页显示的数据量，可以随意更改
+    $scope.selPage = 1;
+    $scope.data = item;
+    $scope.pages = Math.ceil($scope.data.length / $scope.pageSize); //分页数
+    $scope.pageList = [];//最多显示5页，后面6页之后不会全部列出页码来
+    $scope.index = 1;
+    var len = $scope.pages> 5 ? 5:$scope.pages;
+    $scope.pageList = Array.from({length: len}, (x,i) => i+1);
+
+    //设置表格数据源(分页)
+    $scope.items = $scope.data.slice(0, $scope.pageSize);
+};
+```
+
+同时需要实现翻页的功能，翻页的方法是先通过函数获取当前页面，然后选取下一个要展示的页面，取出适当的条数并进行展示，具体代码如下。
+
+```javascript
+//打印当前选中页
+$scope.selectPage = function (page) {
+    //不能小于1大于最大（第一页不会有前一页，最后一页不会有后一页）
+    if (page < 1 || page > $scope.pages) return;
+    //最多显示分页数5，开始分页转换
+    var pageList = [];
+    if(page>2){
+        for (var i = page-2; i <= $scope.pages && i < page+3; i++) {
+            pageList.push(i);
+        }
+    }else {
+        for (var i = page; i <= $scope.pages && i < page+5; i++) {
+            pageList.push(i);
+        }
+    }
+
+    $scope.index =(page-1)*$scope.pageSize+1;
+    $scope.pageList = pageList;
+    $scope.selPage = page;
+    $scope.items = $scope.data.slice(($scope.pageSize * (page - 1)), (page * $scope.pageSize));//通过当前页数筛选出表格当前显示数据
+    console.log("选择的页：" + page);
+};
+
+//设置当前选中页样式
+$scope.isActivePage = function (page) {
+    return $scope.selPage == page;
+};
+//上一页
+$scope.Previous = function () {
+    $scope.selectPage($scope.selPage - 1);
+};
+//下一页
+$scope.Next = function () {
+    $scope.selectPage($scope.selPage + 1);
+};
+```
+
+对于排序功能来说，使用数据库即后端进行实现是一种相对简单容易实现的方案，直接修改表示顺序的变量并重新执行一次查询即可。
+
+```javascript
+$scope.searchsortASC = function () {
+    $scope.sorttime = '1';
+    $scope.search();
+};
+$scope.searchsortDESC = function () {
+    $scope.sorttime = '2';
+    $scope.search();
+};
+```
+
+同时在DAO层需要加入以下代码用于将查询结果排序。
+
+```javascript
+if(searchparam['stime']!="undefined"){
+    if(searchparam['stime']=="1"){
+        seq = {"publish_date": 1};
+    }else {
+        seq = {"publish_date": -1};
+    }
+}
+```
+
 ### 数据分析图表
+
+```javascript
+```
+
+```javascript
+```
+
+```javascript
+```
+
+```javascript
+```
+
+```javascript
+```
 
 ### 管理端界面
 
@@ -245,5 +416,6 @@ router.get('/search', function(request, response) {
 
 ## 代码链接
 
-目前我的代码已上传至Github，链接为：https://github.com/ChiachenCheng/NewsShow
+目前我本次实验的代码已上传至Github，链接为：https://github.com/ChiachenCheng/NewsShow
 
+上一次实验的代码已于上次DDL之前上传至Github，链接为：https://github.com/ChiachenCheng/NewsCrawler
