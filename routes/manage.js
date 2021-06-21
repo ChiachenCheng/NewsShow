@@ -34,8 +34,19 @@ router.get('/forbid', function(request, response){
         userDAO.getByUsername(request.session['username'], function (user) {
             if(user["manage"] === 1){
                 var usr = request.query.username;
-                userDAO.forbid(usr, function(result){
-                    response.json({message:'data',result:result})
+                // userDAO.forbid(usr, function(result){
+                //     response.json({message:'data',result:result})
+                // });
+                userDAO.getByUsername(usr, function(user){
+                    if(user.length == 0)
+                        response.json({message:'data',result:"该用户不存在！"})
+                    else{
+                        var nsta = 1 - user["available"];
+                        userDAO.forbid(usr, nsta, function(stat){
+                            if(nsta) response.json({message:'data',result:"启用用户成功！"});
+                            else response.json({message:'data',result:"禁用用户成功！"});
+                        });
+                    }
                 });
             } else {
                 response.json({message:'url',result:'/index.html'});

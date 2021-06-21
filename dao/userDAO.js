@@ -27,22 +27,28 @@ module.exports = {
             else callback(result[0]);
         });
     },
-    forbid: function(username,callback){
-        var que = {"name": username};
-        mongo.search_user(que, {}, {}, function(result){
-            if (result.length == 0)
-                callback("该用户不存在！");
-            else{
-                var user = result[0];
-                var nsta = 1 - user["available"];
-                var whe = {"name": username};
-                var upd = {$set: {"available": nsta}};
-                mongo.update_user(whe, upd, function(result){
-                    console.log(result);
-                    if(nsta) callback("启用用户成功！");
-                    else callback("禁用用户成功！")
-                })
-            }
+    forbid: function(username, setavai, callback){
+        // var que = {"name": username};
+        // mongo.search_user(que, {}, {}, function(result){
+        //     if (result.length == 0)
+        //         callback("该用户不存在！");
+        //     else{
+        //         var user = result[0];
+        //         var nsta = 1 - user["available"];
+        //         var whe = {"name": username};
+        //         var upd = {$set: {"available": nsta}};
+        //         mongo.update_user(whe, upd, function(result){
+        //             console.log(result);
+        //             if(nsta) callback("启用用户成功！");
+        //             else callback("禁用用户成功！")
+        //         })
+        //     }
+        // });
+        var whe = {"name": username};
+        var upd = {$set: {"available": setavai}};
+        mongo.update_user(whe, upd, function(result){
+            console.log(result);
+            callback(true);
         });
     }
 
