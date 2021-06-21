@@ -68,23 +68,23 @@ module.exports = {
         var allword = searchparam["a"];
         console.log(title);
 
+        var key_n = 5;
         var or_array = [];
+        var words = undefined;
+        var words_array = [];
         if(title!="undefined")
-            or_array.push({"title":{"$regex":searchparam["t"]}})
+            or_array.push({"title":{"$regex":title}})
         if(keyword!="undefined")
             or_array.push({"keywords":{"$regex":keyword}})
         if(content!="undefined"){
-            console.log("11111111");
-            var words = nodejieba.extract(content, 20);
-            console.log(words);
-            var words_array = []
-            console.log(words.length);
+            words = nodejieba.extract(content, key_n);
+            // console.log(words);
             for (var i=0; i<words.length; i++){
                 wd = words[i];
-                console.log(wd);
+                // console.log(wd);
                 words_array.push({"content":{"$regex":wd["word"]}})
             }
-            console.log(words_array);
+            // console.log(words_array);
             // or_array.push({"content":{"$regex":content}})
             or_array.push({"$or":words_array})
         }
@@ -105,17 +105,45 @@ module.exports = {
         }
 
         mongo.search_web(que, col, seq, function(result){
-            // response.writeHead(200, {
-            //     "Content-Type": "application/json"
-            // });
-            // response.write(JSON.stringify(result));
-            // response.end();
-            // if(searchparam['stime']!="undefined"){
-
-            //     result.array.forEach(element => {
-                    
-            //     });
-            // }
+            if(searchparam['stime']=="undefined"){
+                console.log("enter1");
+                console.log(content);
+                console.log(words);
+                if(content!="undefined" && words!=undefined){
+                    console.log("enter");
+                    // result.array.forEach(element => {
+                    //     var temp_content = element["content"];
+                    //     var contentkeywds = nodejieba.extract(temp_content, key_n);
+                    //     console.log(contentkeywds);
+                    // });
+                    var m = new Map();
+                    for(var i = 0; i < words.length; i++){
+                        var t = words[i];
+                        m.set(t["word"], t["weight"]);
+                    }
+                    console.log(m);
+                    console.log(result.length);
+                    for(var i=0;i<result.length;i++){
+                        // console.log(result[i]);
+                        var ele = result[i];
+                        var temp_content = ele["content"];
+                        var contentkeywds = nodejieba.extract(temp_content, key_n);
+                        var s = 0;
+                        for (var j=0; j<contentkeywds.length; j++){
+                            var wwd = contentkeywds[j];
+                            if(m.has(wwd["word"])){
+                                s += m.get(wwd["word"]);
+                            }                    
+                        }
+                        (result[i])["weight"] = s;
+                        // console.log(contentkeywds);
+                    }
+                    console.log(result[0]);
+                }
+            }
+            result.sort(function(a,b){
+                return b["weight"] - a["weight"];
+            })
             callback(null, result, null); //事件驱动回调
         });
 
