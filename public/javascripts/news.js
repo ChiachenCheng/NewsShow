@@ -221,10 +221,10 @@ app.controller('news_Ctrl', function ($scope, $http, $timeout) {
                     res.data.result.forEach(function (element) {
                         // "x":  责任编辑：李夏君 ,对x进行处理,只取 名字
                         var thename = pattern.exec(element["x"]);
-                        if(thename != null)
+                        if(thename != null){
                             thename = thename[1];
-                        newdata.push({name: thename, value: element["y"]});
-
+                            newdata.push({name: thename, value: element["y"]});
+                        }
                     });
 
                     var myChart = echarts.init(document.getElementById('main1'));
@@ -242,15 +242,14 @@ app.controller('news_Ctrl', function ($scope, $http, $timeout) {
                         },
                         legend: {
                             orient: 'vertical',
-                            left: 'left',
-                            // data: ['直接访问', '邮件营销', '联盟广告', '视频广告', '搜索引擎']
+                            right: 'right'
                         },
                         series: [
                             {
                                 name: '访问来源',
                                 type: 'pie',
                                 radius: '55%',
-                                center: ['50%', '60%'],
+                                center: ['35%', '50%'],
                                 data: newdata,
                                 itemStyle: {
                                     emphasis: {
@@ -290,7 +289,6 @@ app.controller('news_Ctrl', function ($scope, $http, $timeout) {
                     if (option && typeof option === "object") {
                         myChart.setOption(option, true);
                     }
-                    ;
                 }
             });
     };

@@ -4,18 +4,6 @@ app.controller('manage_Ctrl', function ($scope, $http, $timeout) {
     $scope.showSearch = function () {
         $scope.isShow = true;
         $scope.isisshowresult = false;
-
-        // 再次回到查询页面时，表单里要保证都空的
-        $scope.title=undefined;
-        // $scope.title2=undefined;
-        // $scope.selectTitle='AND';
-        $scope.keyword=undefined;
-        $scope.content=undefined;
-        $scope.allword=undefined;
-        // $scope.content2=undefined;
-        // $scope.selectContent='AND';
-        $scope.sorttime=undefined;
-        // $scope.forbiduser=undefined;
     };
 
     $scope.logout = function () {
@@ -60,7 +48,6 @@ app.controller('manage_Ctrl', function ($scope, $http, $timeout) {
             function (res) {
                 if(res.data.message=='data'){
                     $scope.isisshowresult = true; //显示表格查询结果
-                    // $scope.searchdata = res.data;
                     $scope.initPageSort(res.data.result)
                 }else {
                     window.location.href=res.data.result;
@@ -80,10 +67,6 @@ app.controller('manage_Ctrl', function ($scope, $http, $timeout) {
         $scope.pages = Math.ceil($scope.data.length / $scope.pageSize); //分页数
         $scope.pageList = [];//最多显示5页，后面6页之后不会全部列出页码来
         $scope.index = 1;
-        // var page = 1;
-        // for (var i = page; i < $scope.pages+1 && i < page+5; i++) {
-        //     $scope.pageList.push(i);
-        // }
         var len = $scope.pages> 5 ? 5:$scope.pages;
         $scope.pageList = Array.from({length: len}, (x,i) => i+1);
 

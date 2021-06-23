@@ -421,20 +421,314 @@ if(searchparam['stime']!="undefined"){
 
 ### 数据分析图表
 
-```javascript
-```
+本次实验中使用echarts制作了共4张动态图表，所有图表均是动态的且包含一定交互功能。
+
+由于使用MongoDB的聚集函数接口繁多且较为复杂，所以我选择了自己实现聚集函数的功能。首先是柱状图，内容是爬取的新闻随天数分布的图表。其后端代码如下。该部分类似之前的时间热度分析，目的是统计出每天爬取的新闻的数量。回调函数内部的代码是自行编写聚集函数进行统计的过程，该代码会被多次复用。
+
 
 ```javascript
+router.get('/histogram', function(request, response) {
+    console.log(request.session['username']);
+    if (request.session['username']===undefined) {
+        response.json({message:'url',result:'/index.html'});
+    } else {
+        var col = {"_id":0, "publish_date":1};
+        var seq = {"publish_date": 1};
+
+        newsDAO.query_noparam({}, col, seq, function (err, result, fields) {
+            var m = new Map();
+            for(var i = 0; i < result.length; i++){
+                var date = result[i].publish_date;
+                var temp = 0;
+                if(m.has(date))
+                    temp = m.get(date);
+                m.set(date, temp + 1);
+            }
+            ret = []
+            for (let[k,v] of m) {
+                ret.push({"x":k, "y":v});
+            }
+            response.writeHead(200, {
+                "Content-Type": "application/json",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": 0
+            });
+            response.write(JSON.stringify({message:'data',result:ret}));
+            response.end();
+        });
+    }
+});
 ```
 
-```javascript
-```
+在前端使用echarts生成图表，这里需要先将年月日中的年份去掉，然后将行轴和y轴分别制定为newdata的两个分量。将series项的type设置为bar，然后就可以生成柱状图。下附生成的图表。
+
 
 ```javascript
+$scope.histogram = function () {
+    $scope.isShow = false;
+    $http.get("/news/histogram").then(function (res) {
+        if(res.data.message=='url'){
+            window.location.href=res.data.result;
+        }else {
+            let xdata = [], ydata = [], newdata;
+            var pattern = /\d{4}-(\d{2}-\d{2})/;
+            res.data.result.forEach(function (element) {
+                // "x":"2020-04-28T16:00:00.000Z" ,对x进行处理,只取 月日
+                xdata.push(pattern.exec(element["x"])[1]);
+                ydata.push(element["y"]);
+            });
+            newdata = {"xdata": xdata, "ydata": ydata};
+            var myChart = echarts.init(document.getElementById('main1'));
+            // 指定图表的配置项和数据
+            var option = {
+                title: {text: '新闻发布数 随时间变化'},
+                tooltip: {},
+                legend: {data: ['新闻发布数']},
+                xAxis: {data: newdata["xdata"]},
+                yAxis: {},
+                series: [{name: '新闻数目', type: 'bar', data: newdata["ydata"]}]
+            };
+            // 使用刚指定的配置项和数据显示图表。
+            myChart.setOption(option);
+        }
+    },
+    function (err) {
+        $scope.msg = err.data;
+    });
+};
 ```
 
+![201](img/401.png)
+
+如果要生成新闻的责任编辑的饼状图，就需要在后端统计每个作者的新闻数目，统计方法与柱状图相同。
+
 ```javascript
+router.get('/pie', function(request, response) {
+    console.log(request.session['username']);
+    if (request.session['username']===undefined) {
+        response.json({message:'url',result:'/index.html'});
+    } else {
+        var col = {"_id":0, "author":1};
+        var seq = {"author": 1};
+        newsDAO.query_noparam({}, col, seq, function (err, result, fields) {
+            // ... 
+            // 与柱状图大致相同
+        });
+    }
+});
 ```
+
+在生成饼状图时，首先需要将责任编辑的名字用正则表达式处理出来，并且将没有责任编辑的新闻剔除。然后指定图标的类型，位置等信息。由于可以显示更多的可交互的内容，所以需要在setInterval部分额外设置可交互的选项。最后显示图表如图。
+
+```javascript
+$scope.pie = function () {
+    $scope.isShow = false;
+    $http.get("/news/pie").then(function (res) {
+        if(res.data.message=='url'){
+            window.location.href=res.data.result;
+        }else {
+            let newdata = [];
+            var pattern = /责任编辑：(.+)/;//匹配名字
+            res.data.result.forEach(function (element) {
+                // "x":  责任编辑：李夏君 ,对x进行处理,只取 名字
+                var thename = pattern.exec(element["x"]);
+                if(thename != null){
+                    thename = thename[1];
+                    newdata.push({name: thename, value: element["y"]});
+                }
+            });
+            var myChart = echarts.init(document.getElementById('main1'));
+            var app = {};
+            option = null;
+            // 指定图表的配置项和数据
+            var option = {
+                title: {text: '作者发布新闻数量', x: 'center'},
+                tooltip: {trigger: 'item', formatter: "{a} <br/>{b} : {c} ({d}%)"},
+                legend: {orient: 'vertical', right: 'right'},
+                series: [{name: '访问来源', type: 'pie', radius: '55%', center: ['35%', '50%'], data: newdata, itemStyle: {emphasis: {shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)'}}}]
+            };
+            // myChart.setOption(option);
+            app.currentIndex = -1;
+            setInterval(function () {
+                var dataLen = option.series[0].data.length;
+                // 取消之前高亮的图形
+                myChart.dispatchAction({type: 'downplay', seriesIndex: 0, dataIndex: app.currentIndex});
+                app.currentIndex = (app.currentIndex + 1) % dataLen;
+                // 高亮当前图形
+                myChart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: app.currentIndex});
+                // 显示 tooltip
+                myChart.dispatchAction({type: 'showTip', seriesIndex: 0, dataIndex: app.currentIndex});
+            }, 1000);
+            if (option && typeof option === "object") {
+                myChart.setOption(option, true);
+            }
+        }
+    });
+};
+```
+
+![201](img/402.png)
+
+要制作某一关键词随时间变化的趋势图，需要统计并进行分词。这里首先将含该关键词的新闻选出，然后调用分词的代码进行分词。
+
+```javascript
+router.get('/line', function(request, response) {
+    console.log(request.session['username']);
+    if (request.session['username']===undefined) {
+        response.json({message:'url',result:'/index.html'});
+    }else {
+        var keyword = '疫情'; //也可以改进，接受前端提交传入的搜索词
+        var que = {"content":{"$regex":keyword}};
+        var col = {"_id":0, "content":1, "publish_date":1};
+        var seq = {"publish_date": 1};
+        newsDAO.query_noparam(que, col, seq, function (err, result, fields) {
+            response.writeHead(200, {
+                "Content-Type": "application/json",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": 0
+            });
+            response.write(JSON.stringify({message:'data',result:myfreqchangeModule.freqchange(result, keyword)}));
+            response.end();
+        });
+    }
+});
+```
+
+分词的代码如下。这里采用nodejieba中的match函数进行分词，并同时记录下该词出现的日期，以备进行统计。如果没有主动调用词典函数时，则会在第一次调用nodejieba的功能函数时，自动载入默认词典。
+
+```javascript
+// 获取关键词 疫情 随日期变化的出现次数【折线图】
+var nodejieba = require('nodejieba');
+//正则表达式去掉一些无用的字符。
+const regex_c = /[\t\s\r\n\d\w]|[\+\-\(\),\.。，！？《》@、【】"'：:%-\/“”]/g;
+var freqchange = function(vals, keyword) {
+    var regex_k = eval('/'+keyword+'/g');
+    var word_freq = {};
+    vals.forEach(function (data){
+        var content = data["content"].replace(regex_c,'');
+        var publish_date = data['publish_date']
+        var freq = content.match(regex_k).length;// 直接搜这个词。或者是先分词再统计词频（可自己尝试）
+        word_freq[publish_date] = (word_freq[publish_date] + freq ) || 0;
+    });
+    return word_freq;
+};
+exports.freqchange = freqchange;
+```
+
+折线图在前端的生成和柱形图非常相似，这里使用line来表示生成折线图。生成的的折线图如下图所示。
+
+```javascript
+$scope.line = function () {
+    $scope.isShow = false;
+    $http.get("/news/line").then(function (res) {
+        if(res.data.message=='url'){
+            window.location.href=res.data.result;
+        }else {
+            var myChart = echarts.init(document.getElementById("main1"));
+            option = {
+                title: {text: '"疫情"该词在新闻中的出现次数随时间变化图'},
+                xAxis: {type: 'category', data: Object.keys(res.data.result)},
+                yAxis: {type: 'value'},
+                series: [{data: Object.values(res.data.result), type: 'line',
+                    itemStyle: {normal: {label: {show: true}}}}],
+            };
+            if (option && typeof option === "object") {
+                myChart.setOption(option, true);
+            }
+        }
+    });
+};
+```
+
+![201](img/403.png)
+
+最后介绍词云的生成，在后端需要分词并统计出所有单词出现的频率，同样采用上述函数进行统计。
+
+```javascript
+router.get('/wordcloud', function(request, response) {
+    console.log(request.session['username']);
+    if (request.session['username']===undefined) {
+        response.json({message:'url',result:'/index.html'});
+    }else {
+        var que = {}
+        var col = {"_id":0, "content":1}
+        newsDAO.query_noparam({}, col, {}, function (err, result, fields) {
+            // ...
+            // 与折线图相同
+        });
+    }
+});
+```
+
+在前端调用下载好的echarts词云包，并加载好所需的形状，然后就可以生成词云如下。观察可知最常用的词多是虚词，实词中出现较多的是政治、疫情、经济相关的词汇，很符合新闻的特点。
+
+```javascript
+$scope.wordcloud = function () {
+    $scope.isShow = false;
+    $http.get("/news/wordcloud").then(function (res) {
+        if(res.data.message=='url'){
+            window.location.href=res.data.result;
+        }else {
+            var mainContainer = document.getElementById('main1');
+            var chart = echarts.init(mainContainer);
+            var data = [];
+            for (var name in res.data.result) {
+                data.push({
+                    name: name,
+                    value: Math.sqrt(res.data.result[name])
+                })
+            }
+            var maskImage = new Image();
+            maskImage.src = './images/logo.png';
+            var option = {
+                title: {text: '所有新闻内容 jieba分词 的词云展示'},
+                series: [{
+                    type: 'wordCloud',
+                    sizeRange: [12, 60],
+                    rotationRange: [-90, 90],
+                    rotationStep: 45,
+                    gridSize: 2,
+                    shape: 'circle',
+                    maskImage: maskImage,
+                    drawOutOfBound: false,
+                    textStyle: {
+                        normal: {
+                            fontFamily: 'sans-serif',
+                            fontWeight: 'bold',
+                            // Color can be a callback function or a color string
+                            color: function () {
+                                // Random color
+                                return 'rgb(' + [
+                                    Math.round(Math.random() * 160),
+                                    Math.round(Math.random() * 160),
+                                    Math.round(Math.random() * 160)
+                                ].join(',') + ')';
+                            }
+                        },
+                        emphasis: {
+                            shadowBlur: 10,
+                            shadowColor: '#333'
+                        }
+                    },
+                    data: data
+                }]
+            };
+            maskImage.onload = function () {
+                // option.series[0].data = data;
+                chart.clear();
+                chart.setOption(option);
+            };
+            window.onresize = function () {
+                chart.resize();
+            };
+        }
+    });
+} 
+```
+
+![201](img/405.png)
 
 ### 管理端界面
 
@@ -624,7 +918,7 @@ var search_logs = function(webjson, coljson, seqjson, callback) {
 </form>
 ```
 
-在启用和禁用按钮设置为同一个后会产生误解，所以需要对管理员进行提示，用以告诉管理员该用户究竟是已禁用还是启用。这里使用alert函数来实现这一功能，该函数可以直接弹出对话框，相对来说比较方便。网页中前端调用的javascript代码如下。
+在启用和禁用按钮设置为同一个后可能会产生误解，所以需要对管理员进行提示，用以告诉管理员该用户究竟是已禁用还是启用。这里使用alert函数来实现这一功能，该函数可以直接弹出对话框，相对来说比较方便。网页中前端调用的javascript代码如下。
 
 ```javascript
 $scope.stopit = function () {
@@ -714,9 +1008,7 @@ var update_user = function(wherejson, updatejson, callback) {
 
 对于中文分词的查询我选择放在上次实验中content的搜索框中，这样当用户想要查找新闻主体中的内容时，不直接严格匹配而是先进行分词之后再匹配。这样可以是收缩结果更加丰富，容错性更高。分词工具采用nodejieba库，核心代码如下。
 
-当用户决定搜索内容时，默认其可能会输入一句话。然后对这句话进行分词，由于之后还需实现根据查询结果打分的功能，所以这里直接采用extract方法提取出关键词。如果需要实现严格的分词，需要使用`nodejieba.cut()`函数。在获取到要搜索的词之后，将其作为一个并集写入查询语句，即可完成中文分词的查询。
-
-由于中文分词查询配合了下面的查询结果打分一同展示，所以效果的展示在下一节中呈现。
+当用户决定搜索内容时，默认其可能会输入一句话。然后对这句话进行分词，由于之后还需实现根据查询结果打分的功能，所以这里直接采用extract方法提取出关键词。如果需要实现严格的分词，需要使用`nodejieba.cut()`函数。如果没有主动调用词典函数时，则会在第一次调用nodejieba的功能函数时，自动载入默认词典。在获取到要搜索的词之后，将其作为一个并集写入查询语句，即可完成中文分词的查询。
 
 ```javascript
 if(content!="undefined"){
@@ -729,11 +1021,11 @@ if(content!="undefined"){
 }
 ```
 
-
+由于中文分词查询配合了下面的查询结果打分一同展示，所以效果的展示在下一节中呈现。
 
 ### 查询结果打分
 
-查询结果打分可以配合之前的中文分词的查询一起使用，在进行过中文分词之后，取出的文档的顺序可能是没有规律的，此时就需要对搜索结果进行排序，这样才能给用户它们最想要查询到的结果。
+查询结果打分可以配合之前的中文分词的查询一起使用，在进行过中文分词之后，取出的文档的顺序可能是没有规律的，此时就需要对搜索结果进行排序，这样才能给用户他们最想要查询到的结果。
 
 在搜索到相应内容之后，如果没有设定顺序且内容项不为空，就开始对结果进行打分。打分的标准基于tfidf，具体方法如下：对于要搜索的词，之前以处理出tf-idf的值。将content中的内容提取关键词，如果关键词中有和要搜索的词重合的词，就加上搜索的词的tfidf值作为权重。这种打分方式既能很好的利用用于新闻中的信息，又能够体现一句话中不同词不同的重要程度。在得到打分之后再对搜索结果进行排序即可。
 
@@ -768,14 +1060,11 @@ mongo.search_web(que, col, seq, function(result){
 });
 ```
 
-```javascript
-```
+在内容关键字中输入一句话，查询的结果如下图所示。可以看到，下面第一条正是搜索的内容，第二条是讲述同一件事情的新闻，之后的几条新闻相关性递减。这说明我们对于查询结果的打分是非常准确的。
 
-```javascript
-```
+![201](img/701.png)
 
-```javascript
-```
+
 
 ## 代码链接
 
