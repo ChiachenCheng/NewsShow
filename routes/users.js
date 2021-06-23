@@ -6,7 +6,6 @@ var md5 =require("md5");
 router.post('/login', function(req, res) {
   var username = req.body.username;
   var password = md5("1999" + req.body.password + "1205");
-  // var sess = req.session;
 
   userDAO.getByUsername(username, function (user) {
     console.log(user)
@@ -18,7 +17,6 @@ router.post('/login', function(req, res) {
           req.session['username'] = username;
           res.cookie('username', username);
           res.json({msg: 'ok'});
-          // res.json({msg:'ok'});
         } else {
           res.json({msg:'您的账号被禁用，请联系管理员！'});
         }
@@ -29,7 +27,6 @@ router.post('/login', function(req, res) {
   });
 });
 
-
 /* add users */
 router.post('/register', function (req, res) {
   var add_user = req.body;
@@ -37,7 +34,6 @@ router.post('/register', function (req, res) {
   // 先检查用户是否存在
   userDAO.getByUsername(add_user.username, function (user) {
     if (user.length != 0) {
-      // res.render('index', {msg:'用户不存在！'});
       res.json({msg: '用户已存在！'});
     }else {
       userDAO.add(add_user, function (success) {
@@ -70,7 +66,6 @@ router.get('/logout', function(req, res, next){
 router.get("/manage", function(req, res, next){
   var usr = req.session["username"];
   if (usr===undefined) {
-    // response.redirect('/index.html')
     response.json({message:'url',result:'/index.html'});
   } else {
     userDAO.getByUsername(usr, function (user) {

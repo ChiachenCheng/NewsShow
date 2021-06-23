@@ -8,30 +8,22 @@ var myfreqchangeModule = require('./freqchange.js');
 
 router.get('/search', function(request, response) {
     console.log(request.session['username']);
-    //sql字符串和参数
     if (request.session['username']===undefined) {
-        // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     } else {
         var param = request.query;
         console.log(param);
         newsDAO.search(param, function (err, result, fields) {
-            // console.log(result);
             response.json({message:'data',result:result});
         })
     }
 });
 
 router.get('/histogram', function(request, response) {
-    //sql字符串和参数
     console.log(request.session['username']);
-
-    //sql字符串和参数
     if (request.session['username']===undefined) {
-        // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     } else {
-        // var fetchSql = "select publish_date as x,count(publish_date) as y from fetches group by publish_date order by publish_date;";
         var col = {"_id":0, "publish_date":1};
         var seq = {"publish_date": 1};
 
@@ -62,16 +54,10 @@ router.get('/histogram', function(request, response) {
 
 
 router.get('/pie', function(request, response) {
-    //sql字符串和参数
     console.log(request.session['username']);
-    console.log("12345678")
-
-    //sql字符串和参数
     if (request.session['username']===undefined) {
-        // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     } else {
-        // var fetchSql = "select author as x,count(author) as y from fetches group by author;";
         var col = {"_id":0, "author":1};
         var seq = {"author": 1};
         newsDAO.query_noparam({}, col, seq, function (err, result, fields) {
@@ -100,16 +86,11 @@ router.get('/pie', function(request, response) {
 });
 
 router.get('/line', function(request, response) {
-    //sql字符串和参数
     console.log(request.session['username']);
-
-    //sql字符串和参数
     if (request.session['username']===undefined) {
-        // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     }else {
         var keyword = '疫情'; //也可以改进，接受前端提交传入的搜索词
-        // var fetchSql = "select content,publish_date from fetches where content like'%" + keyword + "%' order by publish_date;";
         var que = {"content":{"$regex":keyword}};
         var col = {"_id":0, "content":1, "publish_date":1};
         var seq = {"publish_date": 1};
@@ -127,15 +108,10 @@ router.get('/line', function(request, response) {
 });
 
 router.get('/wordcloud', function(request, response) {
-    //sql字符串和参数
     console.log(request.session['username']);
-
-    //sql字符串和参数
     if (request.session['username']===undefined) {
-        // response.redirect('/index.html')
         response.json({message:'url',result:'/index.html'});
     }else {
-        // var fetchSql = "select content from fetches;";
         var que = {}
         var col = {"_id":0, "content":1}
         newsDAO.query_noparam({}, col, {}, function (err, result, fields) {

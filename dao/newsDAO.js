@@ -1,72 +1,17 @@
-// var mysql = require('mysql');
-// var mysqlConf = require('../conf/mysqlConf');
-// var pool = mysql.createPool(mysqlConf.mysql);
-// 使用了连接池，重复使用数据库连接，而不必每执行一次CRUD操作就获取、释放一次数据库连接，从而提高了对数据库操作的性能。
 var mongo = require("./mongodb.js")
 var nodejieba = require('nodejieba');
 
 module.exports = {
     query_noparam :function(que, col, seq, callback) {
-        // pool.getConnection(function(err, conn) {
-        //     if (err) {
-        //         callback(err, null, null);
-        //     } else {
-        //         conn.query(sql, function(qerr, vals, fields) {
-        //             conn.release(); //释放连接
-        //             callback(qerr, vals, fields); //事件驱动回调
-        //         });
-        //     }
-        // });
         mongo.search_web(que, col, seq, function(result){
             callback(null, result, null); //事件驱动回调
         });
     },
     search :function(searchparam, callback) {
-        // // 组合查询条件
-        // var sql = 'select * from fetches ';
-
-        // if(searchparam["t2"]!="undefined"){
-        //     sql +=(`where title like '%${searchparam["t1"]}%' ${searchparam['ts']} title like '%${searchparam["t2"]}%' `);
-        // }else if(searchparam["t1"]!="undefined"){
-        //     sql +=(`where title like '%${searchparam["t1"]}%' `);
-        // };
-
-        // if(searchparam["t1"]=="undefined"&&searchparam["t2"]=="undefined"&&searchparam["c1"]!="undefined"){
-        //     sql+='where ';
-        // }else if(searchparam["t1"]!="undefined"&&searchparam["c1"]!="undefined"){
-        //     sql+='and ';
-        // }
-
-        // if(searchparam["c2"]!="undefined"){
-        //     sql +=(`content like '%${searchparam["c1"]}%' ${searchparam['cs']} content like '%${searchparam["c2"]}%' `);
-        // }else if(searchparam["c1"]!="undefined"){
-        //     sql +=(`content like '%${searchparam["c1"]}%' `);
-        // }
-
-        // if(searchparam['stime']!="undefined"){
-        //     if(searchparam['stime']=="1"){
-        //         sql+='ORDER BY publish_date ASC ';
-        //     }else {
-        //         sql+='ORDER BY publish_date DESC ';
-        //     }
-        // }
-
-        // sql+=';';
-        // pool.getConnection(function(err, conn) {
-        //     if (err) {
-        //         callback(err, null, null);
-        //     } else {
-        //         conn.query(sql, function(qerr, vals, fields) {
-        //             conn.release(); //释放连接
-        //             callback(qerr, vals, fields); //事件驱动回调
-        //         });
-        //     }
-        // });
         var title = searchparam["t"];
         var keyword = searchparam["k"];
         var content = searchparam["c"];
         var allword = searchparam["a"];
-        console.log(title);
 
         var key_n = 5;
         var or_array = [];
@@ -78,14 +23,10 @@ module.exports = {
             or_array.push({"keywords":{"$regex":keyword}})
         if(content!="undefined"){
             words = nodejieba.extract(content, key_n);
-            // console.log(words);
             for (var i=0; i<words.length; i++){
                 wd = words[i];
-                // console.log(wd);
                 words_array.push({"content":{"$regex":wd["word"]}})
             }
-            // console.log(words_array);
-            // or_array.push({"content":{"$regex":content}})
             or_array.push({"$or":words_array})
         }
         if(allword!="undefined")
@@ -95,7 +36,6 @@ module.exports = {
         var que = {"$or":or_array};
         var col = {"_id":0, "source_encoding":0, "crawltime":0};
         var seq = {};
-
         if(searchparam['stime']!="undefined"){
             if(searchparam['stime']=="1"){
                 seq = {"publish_date": 1};
@@ -106,25 +46,13 @@ module.exports = {
 
         mongo.search_web(que, col, seq, function(result){
             if(searchparam['stime']=="undefined"){
-                console.log("enter1");
-                console.log(content);
-                console.log(words);
                 if(content!="undefined" && words!=undefined){
-                    console.log("enter");
-                    // result.array.forEach(element => {
-                    //     var temp_content = element["content"];
-                    //     var contentkeywds = nodejieba.extract(temp_content, key_n);
-                    //     console.log(contentkeywds);
-                    // });
                     var m = new Map();
                     for(var i = 0; i < words.length; i++){
                         var t = words[i];
                         m.set(t["word"], t["weight"]);
                     }
-                    console.log(m);
-                    console.log(result.length);
                     for(var i=0;i<result.length;i++){
-                        // console.log(result[i]);
                         var ele = result[i];
                         var temp_content = ele["content"];
                         var contentkeywds = nodejieba.extract(temp_content, key_n);
@@ -136,9 +64,7 @@ module.exports = {
                             }                    
                         }
                         (result[i])["weight"] = s;
-                        // console.log(contentkeywds);
                     }
-                    console.log(result[0]);
                 }
             }
             result.sort(function(a,b){
@@ -148,6 +74,4 @@ module.exports = {
         });
 
     },
-
-
 };

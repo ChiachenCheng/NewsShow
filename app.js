@@ -5,10 +5,7 @@ var cookieParser = require('cookie-parser');
 var session = require('express-session');
 var logger = require('morgan');
 var logDAO = require('./dao/logDAO.js');
-// var fs = require('fs');//加了文件操作的模块
-// var accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flag: 'a' });//创建一个写文件流，并且保存在当前文件夹的access.log文件中
 
-// var indexRouter = require('./routes/users');
 var usersRouter = require('./routes/users');
 var newsRouter = require('./routes/news');
 var manageRouter = require('./routes/manage');
@@ -25,10 +22,6 @@ app.use(session({
     maxAge : 1000 * 60 * 60, // 设置 session 的有效时间，单位毫秒
   },
 }));
-
-// view engine setup
-// app.set('views', path.join(__dirname, 'views'));
-// app.set('view engine', 'ejs');
 
 let method = '';
 app.use(logger(function (tokens, req, res) {
@@ -65,39 +58,15 @@ app.use(logger(function (tokens, req, res) {
 
 }, ));
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/angular', express.static(path.join(__dirname , '/node_modules/angular')));
 
-// app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/news', newsRouter);
 app.use('/manage', manageRouter);
-
-
-//  检测是否登录
-// app.use(function(req, res, next) {
-//   var url = req.url;
-//   // 判断不拦截的路由 除/之外的都拦截
-//   if ( url!='/users/login' && !req.session.username) {
-//     res.redirect('/users/login');
-//   }else {
-//     next();
-//   }
-// });
-
-
-// 这个中间件为什么不起作用啊
-// app.use((req, res, next) => {
-//   if (!req.session['username']) {
-//     res.redirect('/');
-//   } else {
-//     next();
-//   }
-// });
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -109,7 +78,6 @@ app.use(function(err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
-
   // render the error page
   res.status(err.status || 500);
   // res.render('error');
